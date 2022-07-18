@@ -5,7 +5,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.contrib.auth import get_user_model
-from ..models import Comment, Post
+from ..models import Comment, Follow, Post
 
 
 User = get_user_model()
@@ -20,9 +20,15 @@ class PostCreateFormTests(TestCase):
     def setUpClass(cls) -> None:
         super().setUpClass()
         cls.user = User.objects.create_user(username='Dmitry')
+        cls.user2 = User.objects.create_user(username='Lev')
+        cls.user3 = User.objects.create_user(username='Ilya')
 
         cls.post = Post.objects.create(
             author=PostCreateFormTests.user,
+            text='Тестовый пост',
+        )
+        cls.post2 = Post.objects.create(
+            author=PostCreateFormTests.user2,
             text='Тестовый пост',
         )
         cls.comment = Comment.objects.create(
@@ -59,7 +65,6 @@ class PostCreateFormTests(TestCase):
             content=small_gif,
             content_type='image/gif'
         )
-
         form_data = {
             'author': PostCreateFormTests.user,
             'text': 'Новый пост',
@@ -127,3 +132,32 @@ class PostCreateFormTests(TestCase):
             Comment.objects.count(),
             comment_count + 1
         )
+
+    def test_subscribe(self):
+        """Проверка возможности подписываться и отписываться"""
+        subscribe_count_before = Follow.objects.count()
+        following = Follow.objects.create(user=PostCreateFormTests.user,
+                                          author=PostCreateFormTests.user2)
+        self.assertEqual(Follow.objects.count(), subscribe_count_before + 1)
+
+        following.delete()
+        self.assertEqual(Follow.objects.count(), subscribe_count_before)
+
+    def test_display_post_from_a_subscribe_user(self):
+        """
+        Проверка отображения поста у подписанного
+        пользователя в follow_index
+        """
+        Follow.objects.create(user=PostCreateFormTests.user,
+                              author=PostCreateFormTests.user2)
+        posts = Post.objects.filter(
+            author__following__user=PostCreateFormTests.user
+        )
+        self.assertEqual(posts.count(), 1)
+
+        Post.objects.create(
+            author=PostCreateFormTests.user3,
+            text='Тестовый пост',
+        )
+
+        self.assertEqual(posts.count(), 1)
