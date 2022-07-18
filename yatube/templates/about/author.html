@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Об авторе проекта{% endblock %}
+
+{% block content %}
+  <h1>Привет, я Дмитрий!</h1>
+  <h6>Автор этого замечательного сайта</h6>
+  <p>
+    В данный момент являюсь студентом ВлГУ, инеженером-конструктором научно-производственного комплекса "АВТОПРИБОР", <br>
+    а так же студентом Яндекс Практикума :)<br>
+    Мечтаю стать крутым Backend - разработчиком
+  </p>
+  <p><a class="navbar-brand" href="https://github.com/Pash1et">
+    <img src="{% static 'img/GitHub1.png' %}" width="30" height="30" class="d-inline-block align-top" alt="">
+    <strong>GitHub</strong>
+  </a></p>
+  <p><a class="navbar-brand" href="https://www.instagram.com/dimitry_gorelov/">
+    <img src="{% static 'img/inst.png' %}" width="30" height="30" class="d-inline-block align-top" alt="">
+    <strong>Instagram</strong>
+  </a></p>
+  <p><a class="navbar-brand" href="https://vk.com/dimitry.gorelov/">
+    <img src="{% static 'img/vk.png' %}" width="30" height="30" class="d-inline-block align-top" alt="">
+    <strong>Vkontakte</strong>
+  </a></p>
+{% endblock %} 
