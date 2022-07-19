@@ -38,6 +38,13 @@ class StaticUrlTests(TestCase):
             ('/create/', '/auth/login/?next=/create/'),
             (f'/posts/{StaticUrlTests.post.pk}/edit/',
                 f'/auth/login/?next=/posts/{StaticUrlTests.post.pk}/edit/'),
+            (f'/posts/{StaticUrlTests.post.pk}/comment/',
+                f'/auth/login/?next=/posts/{StaticUrlTests.post.pk}/comment/'),
+            ('/follow/', '/auth/login/?next=/follow/'),
+            (f'/profile/{StaticUrlTests.user}/follow/',
+                f'/auth/login/?next=/profile/{StaticUrlTests.user}/follow/'),
+            (f'/profile/{StaticUrlTests.user}/unfollow/',
+                f'/auth/login/?next=/profile/{StaticUrlTests.user}/unfollow/'),
         ]
 
     def setUp(self):
@@ -65,7 +72,6 @@ class StaticUrlTests(TestCase):
         Проверим, что при вызове несуществующей страницы,
         получаем ошибку 404
         """
-
         response = self.guest_client.get('/non-exists-page/')
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
 
@@ -74,7 +80,6 @@ class StaticUrlTests(TestCase):
         Проверка доступности создания поста
         только для авторизированного пользователя
         """
-
         response = self.auth_client.get('/create/')
         self.assertEqual(response.status_code, HTTPStatus.OK)
 
@@ -86,7 +91,10 @@ class StaticUrlTests(TestCase):
         self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_redirect_guest_user(self):
-        """Проверка редиректа неавторизованного пользователя на страницу"""
+        """
+        Проверка редиректа неавторизованного пользователя на страницу
+        авторизации
+        """
         for url, redirect_url in StaticUrlTests.private_urls:
             with self.subTest(url=url, redirect_url=redirect_url):
                 response = self.guest_client.get(url)

@@ -82,19 +82,24 @@ def post_create(request):
 def post_edit(request, post_id):
     template = 'posts/create_posts.html'
     post = Post.objects.get(id=post_id)
-    form = PostForm(request.POST,
-                    files=request.FILES or None,
-                    instance=post or None)
-
+    form = PostForm(
+        request.POST,
+        files=request.FILES or None,
+        instance=post or None
+    )
     if request.user != post.author:
-        return render(request,
-                      template,
-                      {'form': form, 'post': post, 'is_edit': True})
+        return render(
+            request,
+            template,
+            {'form': form, 'post': post, 'is_edit': True}
+        )
 
     if not form.is_valid():
-        return render(request,
-                      template,
-                      {'form': form, 'post': post, 'is_edit': True})
+        return render(
+            request,
+            template,
+            {'form': form, 'post': post, 'is_edit': True}
+        )
 
     form.save()
     return redirect('posts:post_detail', post_id=post_id)

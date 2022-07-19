@@ -7,7 +7,7 @@ from django.test import TestCase, Client, override_settings
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django import forms
-from ..models import Post, Group
+from ..models import Follow, Post, Group
 
 
 User = get_user_model()
@@ -223,28 +223,20 @@ class PaginatorViewsTest(TestCase):
         super().setUp()
         self.auth_user = Client()
         self.auth_user.force_login(PaginatorViewsTest.user)
+        cache.clear()
 
     def test_first_index_page_contains_ten_records(self):
-        """
-        Количество постов на первой странице index равно 10.
-        """
-
+        """Количество постов на первой странице index равно 10."""
         response = self.auth_user.get(reverse('posts:index'))
         self.assertEqual(len(response.context['page_obj']), 10)
 
     def test_second_index_page_contains_three_records(self):
-        """
-        На второй странице index должно быть три поста.
-        """
-
+        """На второй странице index должно быть три поста."""
         response = self.auth_user.get(reverse('posts:index') + '?page=2')
         self.assertEqual(len(response.context['page_obj']), 3)
 
     def test_first_group_list_page_contains_ten_records(self):
-        """
-        Количесвто постов на первой странице group_list равно 10.
-        """
-
+        """Количесвто постов на первой странице group_list равно 10."""
         response = self.auth_user.get(
             reverse('posts:group_list', kwargs={
                 'slug': PaginatorViewsTest.group.slug
@@ -253,10 +245,7 @@ class PaginatorViewsTest(TestCase):
         self.assertEqual(len(response.context['page_obj']), 10)
 
     def test_second_group_list_page_contains_three_records(self):
-        """
-        Количесвто постов на второй странице group_list равно 3.
-        """
-
+        """Количесвто постов на второй странице group_list равно 3."""
         response = self.auth_user.get(
             reverse('posts:group_list', kwargs={
                 'slug': PaginatorViewsTest.group.slug
@@ -265,10 +254,7 @@ class PaginatorViewsTest(TestCase):
         self.assertEqual(len(response.context['page_obj']), 3)
 
     def test_first_profile_page_contains_ten_records(self):
-        """
-        Количесвто постов на первой странице profile равно 10.
-        """
-
+        """Количесвто постов на первой странице profile равно 10."""
         response = self.auth_user.get(
             reverse('posts:profile', kwargs={
                 'username': PaginatorViewsTest.user.username
@@ -277,10 +263,7 @@ class PaginatorViewsTest(TestCase):
         self.assertEqual(len(response.context['page_obj']), 10)
 
     def test_second_profile_page_contains_three_records(self):
-        """
-        Количесвто постов на второй странице profile равно 3.
-        """
-
+        """Количесвто постов на второй странице profile равно 3."""
         response = self.auth_user.get(
             reverse('posts:profile', kwargs={
                 'username': PaginatorViewsTest.user.username
@@ -293,9 +276,7 @@ class TestCache(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
-
         cls.user = User.objects.create(username='Dmitry')
-
         cls.post = Post.objects.create(
             author=TestCache.user,
             text='Текст'
@@ -324,3 +305,49 @@ class TestCache(TestCase):
         )
         content_after = response_after.content
         self.assertNotEqual(content_after, content)
+
+
+class TestFollow(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        cls.user = User.objects.create(username='Dmitry')
+        cls.user2 = User.objects.create(username='Lev')
+        cls.post = Post.objects.create(
+            author=cls.user2,
+            text='Тестовый текст для проверки подписок',
+        )
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.auth_user = Client()
+        self.auth_user.force_login(TestCache.user)
+        cache.clear()
+
+    def test_subscribe(self):
+        """Проверка возможности подписываться и отписываться"""
+        subscribe_count_before = Follow.objects.count()
+        following = Follow.objects.create(user=TestFollow.user,
+                                          author=TestFollow.user2)
+        self.assertEqual(Follow.objects.count(), subscribe_count_before + 1)
+
+        following.delete()
+
+        self.assertEqual(Follow.objects.count(), subscribe_count_before)
+
+    def test_display_post_from_a_subscribe_user(self):
+        """
+        Проверка отображения поста у подписанного
+        пользователя в follow_index
+        """
+        following = Follow.objects.create(user=TestFollow.user,
+                                          author=TestFollow.user2)
+        response = self.auth_user.get(reverse('posts:follow_index'))
+        page_follow_text = response.context['page_obj'][0].text
+        self.assertEqual(page_follow_text, TestFollow.post.text)
+
+        following.delete()
+        cache.clear()
+
+        response = self.auth_user.get(reverse('posts:follow_index'))
+        self.assertNotContains(response, TestFollow.post)

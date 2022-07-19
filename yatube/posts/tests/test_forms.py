@@ -3,9 +3,10 @@ import tempfile
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
+from django.core.cache import cache
 from django.urls import reverse
 from django.contrib.auth import get_user_model
-from ..models import Comment, Follow, Post
+from ..models import Comment, Group, Post
 
 
 User = get_user_model()
@@ -31,6 +32,11 @@ class PostCreateFormTests(TestCase):
             author=PostCreateFormTests.user2,
             text='Тестовый пост',
         )
+        cls.group = Group.objects.create(
+            title='Тестовая группа',
+            slug='test-slug',
+            description='Тестовое описание',
+        )
         cls.comment = Comment.objects.create(
             author=PostCreateFormTests.user,
             post=PostCreateFormTests.post,
@@ -46,11 +52,11 @@ class PostCreateFormTests(TestCase):
         super().setUp()
         self.auth_client = Client()
         self.auth_client.force_login(PostCreateFormTests.user)
+        cache.clear()
 
     def test_create_post(self):
         """Проверка создания нового поста"""
         post_count = Post.objects.count()
-
         small_gif = (
             b'\x47\x49\x46\x38\x39\x61\x02\x00'
             b'\x01\x00\x80\x00\x00\x00\x00\x00'
@@ -59,26 +65,26 @@ class PostCreateFormTests(TestCase):
             b'\x02\x00\x01\x00\x00\x02\x02\x0C'
             b'\x0A\x00\x3B'
         )
-
         uploaded = SimpleUploadedFile(
             name='small.gif',
             content=small_gif,
             content_type='image/gif'
         )
         form_data = {
-            'author': PostCreateFormTests.user,
             'text': 'Новый пост',
+            'group': PostCreateFormTests.group.id,
+            'author': PostCreateFormTests.user,
             'image': uploaded,
         }
         response = self.auth_client.post(
             reverse('posts:post_create'),
             data=form_data,
-            follow=True
+            follow=True,
         )
         self.assertRedirects(
             response,
             reverse('posts:profile', kwargs={
-                'username': PostCreateFormTests.user.username
+                'username': PostCreateFormTests.user,
             })
         )
         self.assertEqual(Post.objects.count(), post_count + 1)
@@ -108,8 +114,6 @@ class PostCreateFormTests(TestCase):
         Проверка возможности комментировать пост
         авторизированному пользователю
         """
-
-        comment_count = Comment.objects.count()
         form_data = {
             'author': PostCreateFormTests.user,
             'post': PostCreateFormTests.post,
@@ -122,42 +126,13 @@ class PostCreateFormTests(TestCase):
             data=form_data,
             follow=True,
         )
+        first_comment = response.context['comments'][0].text
+        second_comment = response.context['comments'][1].text
         self.assertRedirects(
             response,
             reverse('posts:post_detail', kwargs={
                 'post_id': PostCreateFormTests.post.pk
             })
         )
-        self.assertEqual(
-            Comment.objects.count(),
-            comment_count + 1
-        )
-
-    def test_subscribe(self):
-        """Проверка возможности подписываться и отписываться"""
-        subscribe_count_before = Follow.objects.count()
-        following = Follow.objects.create(user=PostCreateFormTests.user,
-                                          author=PostCreateFormTests.user2)
-        self.assertEqual(Follow.objects.count(), subscribe_count_before + 1)
-
-        following.delete()
-        self.assertEqual(Follow.objects.count(), subscribe_count_before)
-
-    def test_display_post_from_a_subscribe_user(self):
-        """
-        Проверка отображения поста у подписанного
-        пользователя в follow_index
-        """
-        Follow.objects.create(user=PostCreateFormTests.user,
-                              author=PostCreateFormTests.user2)
-        posts = Post.objects.filter(
-            author__following__user=PostCreateFormTests.user
-        )
-        self.assertEqual(posts.count(), 1)
-
-        Post.objects.create(
-            author=PostCreateFormTests.user3,
-            text='Тестовый пост',
-        )
-
-        self.assertEqual(posts.count(), 1)
+        self.assertEqual(first_comment, PostCreateFormTests.comment.text)
+        self.assertEqual(second_comment, form_data['text'])

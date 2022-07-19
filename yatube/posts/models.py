@@ -15,7 +15,10 @@ class Group(models.Model):
 
 
 class Post(models.Model):
-    text = models.TextField()
+    text = models.TextField(
+        verbose_name='Текст поста',
+        help_text='Текст нового или отредактированного поста',
+    )
     pub_date = models.DateTimeField(auto_now_add=True)
     author = models.ForeignKey(
         User,
@@ -27,18 +30,22 @@ class Post(models.Model):
         blank=True,
         null=True,
         on_delete=models.SET_NULL,
-        related_name='posts'
+        related_name='posts',
+        verbose_name='Группа поста',
+        help_text='Группа, к которой будет относиться пост',
     )
     image = models.ImageField(
         upload_to='posts/',
         blank=True,
+        verbose_name='Изображение',
+        help_text='Загрузите изображение',
     )
-
-    def __str__(self) -> str:
-        return self.text[:15]
 
     class Meta:
         ordering = ['-pub_date']
+
+    def __str__(self) -> str:
+        return self.text[:15]
 
 
 class Comment(models.Model):
@@ -52,7 +59,10 @@ class Comment(models.Model):
         on_delete=models.CASCADE,
         related_name='comments',
     )
-    text = models.TextField()
+    text = models.TextField(
+        verbose_name='Комментарий',
+        help_text='Оставтье комментарий',
+    )
     created = models.DateTimeField(auto_now_add=True)
 
 
