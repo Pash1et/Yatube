@@ -3,6 +3,9 @@ from .models import Post, Group, Comment
 
 
 class PostAdmin(admin.ModelAdmin):
+    class CommentInline(admin.TabularInline):
+        model = Comment
+
     list_display = (
         'pk',
         'text',
@@ -15,7 +18,10 @@ class PostAdmin(admin.ModelAdmin):
     list_editable = ('group',)
     empty_value_display = '-пусто-'
 
+    inlines = [
+        CommentInline,
+    ]
+
 
 admin.site.register(Post, PostAdmin)
 admin.site.register(Group)
-admin.site.register(Comment)
