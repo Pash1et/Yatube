@@ -22,15 +22,8 @@ class PostCreateFormTests(TestCase):
     def setUpClass(cls) -> None:
         super().setUpClass()
         cls.user = User.objects.create_user(username='Dmitry')
-        cls.user2 = User.objects.create_user(username='Lev')
-        cls.user3 = User.objects.create_user(username='Ilya')
-
         cls.post = Post.objects.create(
             author=PostCreateFormTests.user,
-            text='Тестовый пост',
-        )
-        cls.post2 = Post.objects.create(
-            author=PostCreateFormTests.user2,
             text='Тестовый пост',
         )
         cls.group = Group.objects.create(

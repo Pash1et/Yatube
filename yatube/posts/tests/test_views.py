@@ -9,7 +9,7 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from ..forms import PostForm
-from ..models import Follow, Group, Post
+from ..models import Group, Post
 
 User = get_user_model()
 
@@ -65,10 +65,10 @@ class PostsPageTest(TestCase):
 
     def check_correct_context(self, context, object):
         result = {
-            context.author: object.author,
-            context.text: object.text,
-            context.group: object.group,
-            context.image: object.image,
+            context.get('post').author: object.author,
+            context.get('post').text: object.text,
+            context.get('post').group: object.group,
+            context.get('post').image: object.image,
         }
         for context, object in result.items():
             with self.subTest(context=context, object=object):
@@ -110,7 +110,7 @@ class PostsPageTest(TestCase):
         """Шаблон index сформирован с правильным контекстом."""
         response = self.auth_user.get(reverse('posts:index'))
         self.check_correct_context(
-            response.context.get('post'),
+            response.context,
             PostsPageTest.post
         )
 
@@ -122,7 +122,7 @@ class PostsPageTest(TestCase):
             })
         )
         self.check_correct_context(
-            response.context.get('post'),
+            response.context,
             PostsPageTest.post
         )
         object_group = response.context['group']
@@ -139,7 +139,7 @@ class PostsPageTest(TestCase):
             })
         )
         self.check_correct_context(
-            response.context.get('post'),
+            response.context,
             PostsPageTest.post
         )
         object_author = response.context['author']
@@ -154,7 +154,7 @@ class PostsPageTest(TestCase):
             })
         )
         self.check_correct_context(
-            response.context.get('post'),
+            response.context,
             PostsPageTest.post
         )
 
@@ -254,21 +254,27 @@ class TestCache(TestCase):
 
     def test_index_page_cache(self):
         """Проверка кэширования главной страницы"""
-        post = Post.objects.create(
+        response = self.auth_user.get(
+            reverse('posts:index')
+        )
+        context_before = response.content
+        Post.objects.create(
             author=TestCache.user,
             text='Текст'
         )
         response = self.auth_user.get(
             reverse('posts:index')
         )
-        content = response.content
-        post.delete()
+        context_after = response.content
+        self.assertEqual(context_before, context_after)
+
         cache.clear()
-        response_after = self.auth_user.get(
+
+        response = self.auth_user.get(
             reverse('posts:index')
         )
-        content_after = response_after.content
-        self.assertNotEqual(content_after, content)
+        context_after_clear_cache = response.content
+        self.assertNotEqual(context_after, context_after_clear_cache)
 
 
 class TestFollow(TestCase):
@@ -290,28 +296,41 @@ class TestFollow(TestCase):
 
     def test_subscribe(self):
         """Проверка возможности подписываться и отписываться"""
-        subscribe_count_before = Follow.objects.count()
-        following = Follow.objects.create(user=TestFollow.user,
-                                          author=TestFollow.user2)
-        self.assertEqual(Follow.objects.count(), subscribe_count_before + 1)
-
-        following.delete()
-
-        self.assertEqual(Follow.objects.count(), subscribe_count_before)
+        self.assertEqual(TestCache.user.follower.count(), 0)
+        self.auth_user.get(
+            reverse(
+                'posts:profile_follow',
+                kwargs={'username': TestFollow.user2}
+            )
+        )
+        self.assertEqual(TestCache.user.follower.count(), 1)
+        self.auth_user.get(
+            reverse(
+                'posts:profile_unfollow',
+                kwargs={'username': TestFollow.user2}
+            )
+        )
+        self.assertEqual(TestCache.user.follower.count(), 0)
 
     def test_display_post_from_a_subscribe_user(self):
         """
         Проверка отображения поста у подписанного
         пользователя в follow_index
         """
-        following = Follow.objects.create(user=TestFollow.user,
-                                          author=TestFollow.user2)
+        self.auth_user.get(
+            reverse(
+                'posts:profile_follow',
+                kwargs={'username': TestFollow.user2}
+            )
+        )
         response = self.auth_user.get(reverse('posts:follow_index'))
-        page_follow_text = response.context['page_obj'][0].text
-        self.assertEqual(page_follow_text, TestFollow.post.text)
+        self.assertIn(TestFollow.post, response.context['page_obj'])
 
-        following.delete()
-        cache.clear()
-
+        self.auth_user.get(
+            reverse(
+                'posts:profile_unfollow',
+                kwargs={'username': TestFollow.user2}
+            )
+        )
         response = self.auth_user.get(reverse('posts:follow_index'))
-        self.assertNotContains(response, TestFollow.post)
+        self.assertNotIn(TestFollow.post, response.context['page_obj'])
