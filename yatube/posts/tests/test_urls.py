@@ -13,7 +13,7 @@ class StaticUrlTests(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.user = User.objects.create_user(username='Dmitry')
+        cls.user = User.objects.create(username='Dmitry')
 
         cls.group = Group.objects.create(
             title='Тестовая группа',
@@ -58,14 +58,14 @@ class StaticUrlTests(TestCase):
         """Проверяем, что вызываеются нужные html файлы"""
         for url, template in StaticUrlTests.public_urls:
             with self.subTest(url=url, template=template):
-                response = self.guest_client.get(url)
+                response = self.auth_client.get(url)
                 self.assertTemplateUsed(response, template)
 
     def test_public_urls_exists(self):
         """Проверяем, что страницы имеют статус 200"""
         for url, _ in StaticUrlTests.public_urls:
             with self.subTest(url=url):
-                response = self.guest_client.get(url)
+                response = self.auth_client.get(url)
                 self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_urls_non_exists(self):
