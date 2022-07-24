@@ -40,9 +40,9 @@ def profile(request, username):
     post_list = author.posts.all()
     page_obj = pagination(request, post_list)
 
-    following = Follow.objects.filter(
+    following = request.user.is_authenticated and Follow.objects.filter(
         user=request.user, author=author
-    ).exists() and request.user.is_authenticated
+    ).exists()
     context = {
         'author': author,
         'page_obj': page_obj,
