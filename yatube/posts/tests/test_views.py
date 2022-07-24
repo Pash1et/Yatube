@@ -161,10 +161,8 @@ class PostsPageTest(TestCase):
     def test_create_post_show_correct_form(self):
         """Проверка страницы создания поста на корректность форм"""
         response = self.auth_user.get(reverse('posts:post_create'))
-        for field, expected in PostsPageTest.form.fields.items():
-            with self.subTest(field=field):
-                form_field = response.context.get('form').fields.get(field)
-                self.assertIsInstance(form_field, expected.__class__)
+        form_field = response.context.get('form')
+        self.assertIsInstance(form_field, PostForm)
 
 
 class PaginatorViewsTest(TestCase):
@@ -257,24 +255,17 @@ class TestCache(TestCase):
         response = self.auth_user.get(
             reverse('posts:index')
         )
-        context_before = response.content
+        context_before = response.context
         Post.objects.create(
             author=TestCache.user,
-            text='Текст'
+            text='Текст',
         )
-        response = self.auth_user.get(
-            reverse('posts:index')
-        )
-        context_after = response.content
-        self.assertEqual(context_before, context_after)
-
+        self.assertEqual(context_before, response.context)
         cache.clear()
-
         response = self.auth_user.get(
             reverse('posts:index')
         )
-        context_after_clear_cache = response.content
-        self.assertNotEqual(context_after, context_after_clear_cache)
+        self.assertNotEqual(context_before, response.context)
 
 
 class TestFollow(TestCase):

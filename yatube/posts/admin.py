@@ -2,10 +2,11 @@ from django.contrib import admin
 from .models import Post, Group, Comment
 
 
-class PostAdmin(admin.ModelAdmin):
-    class CommentInline(admin.TabularInline):
-        model = Comment
+class CommentInline(admin.TabularInline):
+    model = Comment
 
+
+class PostAdmin(admin.ModelAdmin):
     list_display = (
         'pk',
         'text',
