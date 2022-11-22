@@ -164,6 +164,14 @@ class PostsPageTest(TestCase):
         form_field = response.context.get('form')
         self.assertIsInstance(form_field, PostForm)
 
+    def test_edit_post_show_correct_form(self):
+        """Проверка страницы создания поста на корректность форм"""
+        response = self.auth_user.get(reverse('posts:post_edit', kwargs={
+            'post_id': PostsPageTest.post.pk
+        }))
+        form_field = response.context.get('form')
+        self.assertIsInstance(form_field, PostForm)
+
 
 class PaginatorViewsTest(TestCase):
     @classmethod
